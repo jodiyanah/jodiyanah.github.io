@@ -1,0 +1,54 @@
+body{background:#333;overflow:hidden}
+#container{
+    width:960px;
+    height:500px;
+    margin:100px auto;
+    overflow: hidden;
+    background: white;
+    position: relative;
+}
+#hero{
+    width:50px;
+    height:50px;
+    background:aqua;
+    position: absolute;
+    top:250px;
+    left:460px;
+    display:none;
+}
+#target{
+    width:20px;
+    height:20px;
+    background:green;
+    position:absolute;
+    border-radius: 10px;
+    display:none;
+}
+#welcome, #results{
+    position:absolute;
+    width:inherit;
+    text-align: center;
+    top:150px;
+    font-size:1.5em;
+    background:rgba(255,100,0,0.2);
+}
+.avoid{
+    width:20px;
+    height:20px;
+    background:red;
+    display:none;
+    position:absolute;
+}
+#score{
+    position: absolute;
+    left:10px;
+    display:none;
+}
+#time{
+    position: absolute;
+    right: 100px;
+    display:none;
+}
+#results{
+    display: none;
+}

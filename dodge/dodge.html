@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Dodge</title>
+        <script src="js/jquery.js"></script>
+        <script src="js/hittest.js"></script>
+        
+        <script>
+            // define variables here
+            var timer;
+            score = 0;
+            seconds = 60;
+            size = 20;
+            stage ="welcome";
+            
+            // document ready and key
+            $(document).ready(function(){
+			     $(document).keydown(function(event) {
+                    $("#hero").clearQueue();
+                    if(stage=="game"){
+                        //down
+                        if(event.keyCode=='40'){
+                           $("#hero").animate({"top":"450"},1000); 
+                        }
+                        //up
+                        if(event.keyCode=='38'){           
+                           $("#hero").animate({"top":"0"},1000)
+                        }
+                        //left
+                        if(event.keyCode=='37'){           
+                            $("#hero").animate({"left":"0"},1000)
+                        }
+                        //right
+                        if(event.keyCode=='39'){           
+                            $("#hero").animate({"left":"910"},1000)
+                        }
+                    }
+                    //check if stage = welcome
+                    if(stage=="welcome"){
+                        startGame();
+                    }
+                    //check if stage = reload
+                    if(stage=="reload"){
+                        location.reload();
+                    }
+                //end keydown
+                }) 
+                 
+            //end document ready    
+            }) 
+            
+            //function startGame 
+            function startGame(){
+                $("#hero,#target,#time,#score,.avoid").show();
+                $("#welcome").slideUp();
+                placeTarget();
+                stage="game";
+                requestAnimationFrame(gameLoop);
+                timer = setInterval(countDown,1000);
+                $(".avoid").each(function(){
+                    moveCube($(this));
+                })
+            }
+            
+            //function placeTarget
+            function placeTarget(){
+                var randomLeft = Math.round(Math.random()*940);
+                var randomTop = Math.round(Math.random()*430)+50;
+                $("#target").css("left",randomLeft);
+                $("#target").css("top",randomTop);
+            }
+            
+            //function gameLoop
+            function gameLoop(){
+                if($("#target").hitTest($("#hero"))){
+                    score++;
+                    $("#score").html("Score:"+score);
+                    placeTarget();
+                    $("#combo").trigger("play");
+                }
+                if(stage=="game"){
+                    requestAnimationFrame(gameLoop);
+                }
+                $(".avoid").each(function(){
+                    if($(this).hitTest($("#hero"))){
+                        $("#punch").trigger("play");
+                        gameOver();
+                    }
+                })
+            }
+            
+            //function moveCube      
+            function moveCube(me){
+                $(me).css("top",Math.round(Math.random()*-500-size)+"px");
+                $(me).css("left",Math.round(Math.random()*(800-size))+"px");
+                $(me).css("width",size).css("height",size); $(me).delay(Math.random()*5000).animate({"top":500+Math.random()*300+"px"},3000,"linear",function(){moveCube(me);size+=10});
+            }
+            
+            //function gameOver
+            function gameOver(){
+                stage="results";
+                $("#target,#time,#score,.avoid").hide();
+                $("#hero").stop().css("left","-1000px");
+                $("#results h3").html("You managed to get "+score+" points.<br>Press any key to play again.");
+                $("#results").slideDown("fast");
+                clearInterval(timer);
+                setTimeout(function(){stage="reload"},3000);
+            }
+            
+            //function countDown
+            function countDown(){
+                seconds--;
+                $("#time").html("Time:"+seconds);
+                if(seconds==0){
+                    gameOver();
+                }
+            }
+            
+        </script>
+        <link href="css/style.css" rel="stylesheet" type="text/css">
+    </head>
+    <body>
+        <div id="container">
+            <div id="hero"></div>
+            <div id="target"></div>
+            <h1 id="score">Score:0</h1>
+            <h1 id="time">Time:60</h1>
+            <div id="results"><h1>Your Results</h1><h3></h3></div>
+            <div id="welcome"><h1>DODGE</h1><h3>Avoid the cubes and collect the circles.<br><span>Press any key to begin</span></h3></div>
+            <div class="avoid"></div>
+            <div class="avoid"></div>
+            <div class="avoid"></div>
+        </div>
+        <!-- audio assets -->
+         <audio id="combo">
+            <source src="media/combo.mp3" type="audio/mpeg">
+         </audio>
+         <audio id="punch"><source src="media/punch.mp3" type="audio/mpeg"
+        </audio>
+    </body>
+</html>
