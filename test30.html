@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ping From Sam</title>
+    <style>
+        /* --- CORE OS --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            margin: 0; padding: 0; background: #0b0b0b; 
+            font-family: 'gg sans', 'Segoe UI', Tahoma, sans-serif; 
+            height: 100vh; width: 100vw;
+            display: flex; align-items: center; justify-content: center; 
+            overflow: hidden; color: #dcddde; 
+        }
+
+        #game-box { 
+            width: 960px; height: 540px; background: #36393f; 
+            position: relative; display: flex; flex-direction: column; 
+            box-shadow: 0 0 50px rgba(0,0,0,1); transform-origin: center center;
+            border-radius: 8px; overflow: hidden;
+        }
+
+        /* --- HEADER --- */
+        #browser-header { background: #202225; flex-shrink: 0; padding: 4px 0 0; }
+        .tabs-bar { display: flex; gap: 2px; padding: 0 8px; }
+        .tab { 
+            height: 32px; width: 140px; background: #2f3136; 
+            border-radius: 4px 4px 0 0; display: flex; align-items: center; 
+            padding: 0 10px; font-size: 13px; color: #8e9297; cursor: pointer; font-weight: 500; transition: 0.2s;
+        }
+        .tab.active { background: #36393f; color: white; }
+        .tab:hover { background: #40444b; }
+        .tab.alert { color: #ed4245; font-weight: bold; animation: pulseText 1s infinite; background: rgba(237, 66, 69, 0.1); }
+
+        /* --- PANES --- */
+        .content-pane { flex: 1; display: none; flex-direction: column; overflow: hidden; background: #36393f; }
+        .scroll-area { flex: 1; overflow-y: auto; padding: 15px 0; display: flex; flex-direction: column; }
+
+        /* --- DISCORD MESSAGES --- */
+        .msg-group { margin-bottom: 8px; padding: 2px 16px; display: flex; gap: 16px; animation: fadeIn 0.2s; }
+        .msg-group:hover { background: rgba(4, 4, 5, 0.07); }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background: #5865f2; flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px;}
+        .msg-content { flex: 1; }
+        .user-header { display: flex; align-items: baseline; gap: 8px; }
+        .username { font-weight: 600; font-size: 16px; color: white; cursor: pointer; }
+        .timestamp { font-size: 12px; color: #72767d; }
+        .msg-text { font-size: 15px; color: #dcddde; line-height: 1.4; margin-top: 2px; }
+        
+        /* CHAT IMAGE STYLING */
+        .chat-img { max-width: 100%; max-height: 220px; border-radius: 6px; margin-top: 8px; border: 1px solid #202225; display: block; object-fit: contain; background: #000; }
+        .img-tag { color: #1d9bf0; font-size: 13px; font-style: italic; background: rgba(29, 155, 240, 0.1); padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; border: 1px solid rgba(29, 155, 240, 0.3); }
+
+        /* --- TWITTER UI --- */
+        .tw-layout { display: flex; height: 100%; }
+        .tw-sidebar { width: 240px; border-right: 1px solid #2f3336; background: #000; display: flex; flex-direction: column; }
+        .dm-item { padding: 15px; border-bottom: 1px solid #2f3336; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+        .dm-item:hover { background: #16181c; }
+        .dm-item.active { border-right: 2px solid #1d9bf0; background: #16181c; }
+        .tw-chat-area { flex: 1; background: #000; display: flex; flex-direction: column; }
+        
+        .tw-bubble-row { display: flex; padding: 10px 20px; gap: 10px; animation: slideIn 0.2s; }
+        .tw-bubble-row.me { flex-direction: row-reverse; }
+        .tw-bubble { padding: 10px 15px; border-radius: 20px; font-size: 15px; max-width: 70%; line-height: 1.4; }
+        .tw-in { background: #202327; color: white; border-bottom-left-radius: 2px; }
+        .tw-out { background: #1d9bf0; color: white; border-bottom-right-radius: 2px; }
+
+        /* --- CONTROLS --- */
+        .controls { min-height: 60px; background: #2f3136; display: flex; align-items: center; padding: 10px 16px; gap: 10px; flex-wrap: wrap; border-top: 1px solid #202225; }
+        .btn { flex: 1; min-width: 120px; height: 40px; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; font-size: 14px; transition: 0.2s; color:white; }
+        .btn-discord { background: #5865f2; }
+        .btn-discord:hover { background: #4752c4; }
+        .btn-twitter { background: #1d9bf0; border-radius: 20px; }
+        .btn-mail { background: #444; border-radius: 4px; border: 1px solid #555; }
+        .btn-disabled { opacity: 0.5; cursor: not-allowed; background: #555 !important; }
+
+        /* --- INSPECTOR OVERLAYS & CLUES --- */
+        .inspector-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 2000; display: none; 
+            justify-content: center; align-items: center;
+        }
+        .inspect-card {
+            width: 450px; background: #000; border: 1px solid #333; border-radius: 12px; overflow: hidden; position: relative;
+        }
+        
+        /* ART INSPECTOR SPECIFIC */
+        .art-canvas { 
+            height: 300px; 
+            background: url('AI-painting-generator-banner.jpg') no-repeat center center; 
+            background-size: contain; 
+            position: relative; 
+            border-bottom: 1px solid #333;
+        }
+        .art-clue { position: absolute; padding: 5px 10px; background: rgba(0,0,0,0.7); border: 1px dashed transparent; border-radius: 4px; color: white; font-size: 12px; cursor: help; font-weight: bold; }
+        .art-clue:hover { border-color: #e91e63; background: rgba(233, 30, 99, 0.4); }
+        .art-found { border-color: #f4212e !important; background: rgba(244, 33, 46, 0.8) !important; animation: pulseRed 0.5s; }
+
+        /* PROFILE INSPECTOR SPECIFIC */
+        .pc-banner { height: 120px; background: #333; }
+        .pc-pfp { width: 90px; height: 90px; background: #fff; border: 4px solid #000; border-radius: 50%; position: absolute; top: 75px; left: 20px; display: flex; align-items: center; justify-content: center; font-size: 35px; }
+        .pc-content { padding: 60px 20px 20px; color: white; } 
+        
+        /* GENERAL CLUE SYSTEM */
+        .clue-box { padding: 5px; border: 1px dashed transparent; border-radius: 4px; cursor: help; display: inline-block; transition: 0.2s;}
+        .clue-box:hover { border-color: #1d9bf0; background: rgba(29, 155, 240, 0.1); }
+        .clue-found { border-color: #f4212e !important; background: rgba(244, 33, 46, 0.15) !important; animation: pulseRed 0.5s; }
+        .clue-safe { border-color: #43b581 !important; background: rgba(67, 181, 129, 0.15) !important; animation: pulseGreen 0.5s; }
+        
+        .tracker-bar { background: #202327; padding: 10px; text-align: center; color: #71767b; font-size: 13px; border-top: 1px solid #333; transition: 0.3s;}
+        .tracker-active { color: #f4212e !important; font-weight: bold; }
+        .tracker-safe { color: #43b581 !important; font-weight: bold; background: rgba(67, 181, 129, 0.1); }
+
+        #overlay-screen { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 3000; }
+        .card { background: #2f3136; padding: 40px; border-radius: 8px; text-align: center; width: 400px; }
+
+        /* REALISTIC REPORT MENU CSS */
+        .report-option {
+            display: flex; align-items: center; gap: 10px; padding: 12px;
+            background: #2f3136; border: 1px solid #202225; border-radius: 4px;
+            cursor: pointer; color: #dcddde; font-size: 14px; transition: 0.2s;
+        }
+        .report-option:hover { background: #36393f; }
+        .report-option.selected { border-color: #5865f2; background: rgba(88, 101, 242, 0.1); }
+        .report-option input[type="radio"] { margin: 0; cursor: pointer; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes pulseRed { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes pulseGreen { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+<div id="game-box">
+    
+    <div id="overlay-screen">
+        <div class="card" id="start-card">
+            <h1 style="margin-top:0; color:#fff; margin-bottom: 25px;">Ping From Sam</h1>
+            <button class="btn btn-discord" style="width:100%; height:50px; font-size:16px;" onclick="startGame()">Connect to Server</button>
+        </div>
+        <div class="card" id="end-card" style="display:none;">
+            <h1 id="end-title" style="margin-top:0;">Mission Complete</h1>
+            <p style="color:#b9bbbe;" id="end-reason">You survived the attack.</p>
+            <button class="btn btn-discord" style="width:100%; height:50px; font-size:16px;" onclick="location.reload()">Replay Simulation</button>
+        </div>
+    </div>
+
+    <div id="custom-alert" class="inspector-overlay" style="z-index: 5000;">
+        <div class="card" style="width: 400px; text-align: left; background: #202225; border: 1px solid #40444b;">
+            <h3 id="alert-title" style="margin-top:0; color: #f4212e; font-size: 18px;">Analysis Complete</h3>
+            <p id="alert-text" style="color: #dcddde; font-size: 14px; line-height: 1.5; white-space: pre-wrap; margin-bottom: 20px;"></p>
+            <button class="btn btn-discord" style="width: 100%;" onclick="document.getElementById('custom-alert').style.display='none'">Understood</button>
+        </div>
+    </div>
+
+    <div id="report-modal" class="inspector-overlay" style="z-index: 6000;">
+        <div class="card" id="report-card-content" style="width: 450px; text-align: left; background: #202225; border: 1px solid #40444b;">
+            <h2 style="margin-top:0; color: #fff; font-size: 20px;">Report Account</h2>
+            <p style="color: #b9bbbe; font-size: 14px; margin-bottom: 20px;">Please select a reason for reporting this profile. The account will also be blocked.</p>
+            
+            <div id="report-options" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                <label class="report-option" onclick="selectReportReason(this)">
+                    <input type="radio" name="report_reason" value="spam">
+                    <span>Spam or Malicious Links</span>
+                </label>
+                <label class="report-option" onclick="selectReportReason(this)">
+                    <input type="radio" name="report_reason" value="fake">
+                    <span>Pretending to be someone else / Fake Account</span>
+                </label>
+                <label class="report-option" onclick="selectReportReason(this)">
+                    <input type="radio" name="report_reason" value="scam">
+                    <span>Financial Scam or Fraud</span>
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" style="background: transparent; border: 1px solid #72767d; color: white;" onclick="closeReportModal()">Cancel</button>
+                <button id="btn-submit-report" class="btn btn-discord btn-disabled" disabled onclick="submitReport()">Submit Report & Block</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="inspector-discord-profile" class="inspector-overlay">
+        <div class="inspect-card" style="background: #18191c; color: white; width: 340px;">
+            <div style="height: 60px; background: #5865f2;"></div>
+            <div style="padding: 0 16px 16px; position: relative;">
+                <div class="avatar" style="width: 80px; height: 80px; font-size: 40px; position: absolute; top: -40px; border: 6px solid #18191c; background: #ed4245;">🤖</div>
+                <div style="padding-top: 55px;"> 
+                    <div class="clue-box" id="clue-d-name" onclick="analyzeDiscordProfile('name')">
+                        <strong style="font-size: 20px;">GameLoot_Bot</strong> <span style="font-size: 14px; color: #b9bbbe;">#0000</span>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; font-size: 14px; border-top: 1px solid #2f3136; padding-top: 15px;">
+                    <h3 style="font-size: 12px; color: #b9bbbe; text-transform: uppercase; margin: 0 0 8px 0;">Discord Member Since</h3>
+                    <div class="clue-box" id="clue-d-date" onclick="analyzeDiscordProfile('date')">
+                        Feb 20, 2026
+                    </div>
+                </div>
+                <div style="margin-top: 15px; font-size: 14px; border-top: 1px solid #2f3136; padding-top: 15px;">
+                    <div class="clue-box" id="clue-d-mutuals" onclick="analyzeDiscordProfile('mutuals')">
+                        <strong>0</strong> Mutual Servers
+                    </div>
+                </div>
+            </div>
+            <div class="tracker-bar" id="discord-profile-tracker">
+                FIND 3 BURNER SIGNS: <span id="discord-prof-count">0</span>/3
+            </div>
+            <div style="padding:10px;">
+                <button id="btn-return-discord" class="btn btn-discord" style="width:100%; display:none; background:#ed4245;" onclick="openReportModal('discord')">🚨 REPORT & BAN USER</button>
+                <button class="btn btn-discord" style="width:100%; margin-top:5px; background:transparent; color:#fff; border:1px solid #333;" onclick="closeInspector('discord-profile')">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="inspector-art" class="inspector-overlay">
+        <div class="inspect-card">
+            <div class="art-canvas">
+                <div class="art-clue" id="art-ear" style="top: 20%; left: 55%;" onclick="analyzeArt('ear')">🔍 Ear</div>
+                <div class="art-clue" id="art-collar" style="top: 45%; left: 20%;" onclick="analyzeArt('collar')">🔍 Collar</div>
+                <div class="art-clue" id="art-hands" style="top: 45%; left: 60%;" onclick="analyzeArt('hands')">🔍 Hand</div>
+                <div class="art-clue" id="art-buttons" style="top: 75%; left: 30%;" onclick="analyzeArt('buttons')">🔍 Buttons</div>
+                <div class="art-clue" id="art-sleeve" style="top: 85%; left: 10%;" onclick="analyzeArt('sleeve')">🔍 Sleeve</div>
+            </div>
+            <div style="padding: 20px; color: white;">
+                <p style="margin-top:0; font-size: 14px; line-height: 1.4; color: #b9bbbe;">
+                    <strong>Bella_Art:</strong> "Here's the sketch! I'll send you the $2,000 check, I just need you to send back $500 for the minting fee first."
+                </p>
+            </div>
+            <div class="tracker-bar" id="art-tracker">
+                FIND 5 AI ARTIFACTS: <span id="art-count">0</span>/5
+            </div>
+            <div style="padding:10px;">
+                <button id="btn-report-art" class="btn btn-twitter" style="width:100%; background:#f4212e; color:white; display:none;" onclick="openReportModal('artist')">🚨 REPORT ACCOUNT</button>
+                <button class="btn btn-twitter" style="width:100%; margin-top:5px; background:transparent; color:#fff; border:1px solid #333;" onclick="closeInspector('art')">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="inspector-artist-profile" class="inspector-overlay">
+        <div class="inspect-card">
+            <div class="pc-banner" style="background: #e91e63;"></div>
+            <div class="pc-pfp" style="color:#e91e63;">🎨</div>
+            <div class="pc-content">
+                <div style="float:right; margin-top:-40px;">
+                    <button class="btn btn-twitter" style="background:#eff3f4; color:#000; width:auto; padding:0 20px;">Follow</button>
+                </div>
+                <div style="margin-top:10px;">
+                    <div class="clue-box" id="clue-artist-name" onclick="analyzeArtistProfile('name')">
+                        <strong style="font-size:18px;">Bella 🎨 Comm Open</strong>
+                    </div>
+                    <div>
+                        <div class="clue-box" id="clue-artist-handle" onclick="analyzeArtistProfile('handle')">
+                            <span style="color:#71767b">@Bella_Art_Studio</span>
+                        </div>
+                    </div>
+                </div>
+                <p style="margin: 15px 0; font-size: 14px; line-height: 1.4;">
+                    Digital illustrator & character designer. ✨ DMs open for commissions!
+                </p>
+                <div style="display:flex; gap:15px; font-size:14px; color:#71767b;">
+                    <div class="clue-box" id="clue-artist-followers" onclick="analyzeArtistProfile('followers')">
+                        <strong style="color:white">342</strong> Following &nbsp; <strong style="color:white">15.2K</strong> Followers
+                    </div>
+                    <div class="clue-box" id="clue-artist-date" onclick="analyzeArtistProfile('date')">
+                        📅 Joined Oct 2018
+                    </div>
+                </div>
+            </div>
+            <div class="tracker-bar" id="artist-profile-tracker">
+                FIND 4 GREEN FLAGS: <span id="artist-prof-count">0</span>/4
+            </div>
+            <div style="padding:10px;">
+                <button id="btn-return-artist" class="btn btn-twitter" style="width:100%; background:transparent; color:#fff; border:1px solid #333;" onclick="closeArtistProfile()">Return to Chat</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="inspector-profile" class="inspector-overlay">
+        <div class="inspect-card">
+            <div class="pc-banner"></div>
+            <div class="pc-pfp">𝕏</div>
+            <div class="pc-content">
+                <div style="float:right; margin-top:-40px;">
+                    <button class="btn btn-twitter" style="background:#eff3f4; color:#000; width:auto; padding:0 20px;">Follow</button>
+                </div>
+                <div style="margin-top:10px;">
+                    <div class="clue-box" id="clue-name" onclick="analyzeProfile('name')">
+                        <strong style="font-size:18px;">𝕏 Support Team</strong> <span style="color:#1d9bf0">✓</span>
+                    </div>
+                    <div>
+                        <div class="clue-box" id="clue-handle" onclick="analyzeProfile('handle')">
+                            <span style="color:#71767b">@X_Help_992</span>
+                        </div>
+                    </div>
+                </div>
+                <p style="margin: 15px 0; font-size: 14px; line-height: 1.4;">
+                    Official automated security response. Click link to verify account status immediately.
+                </p>
+                <div style="display:flex; gap:15px; font-size:14px; color:#71767b;">
+                    <div class="clue-box" id="clue-followers" onclick="analyzeProfile('followers')">
+                        <strong style="color:white">1</strong> Following &nbsp; <strong style="color:white">4</strong> Followers
+                    </div>
+                    <div class="clue-box" id="clue-date" onclick="analyzeProfile('date')">
+                        📅 Joined Feb 2026
+                    </div>
+                </div>
+            </div>
+            <div class="tracker-bar" id="profile-tracker">
+                FIND 4 RED FLAGS: <span id="prof-count">0</span>/4
+            </div>
+            <div style="padding:10px;">
+                <button id="btn-report-profile" class="btn btn-twitter" style="width:100%; background:#f4212e; color:white; display:none;" onclick="openReportModal('support')">🚨 REPORT ACCOUNT</button>
+                <button class="btn btn-twitter" style="width:100%; margin-top:5px; background:transparent; color:#fff; border:1px solid #333;" onclick="closeInspector('profile')">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="browser-header">
+        <div class="tabs-bar">
+            <div id="tab-discord" class="tab active" onclick="switchTab('discord')">#general</div>
+            <div id="tab-twitter" class="tab" onclick="switchTab('twitter')">𝕏 DMs</div>
+            <div id="tab-mail" class="tab" style="display:none;">Inbox (1)</div>
+        </div>
+    </div>
+
+    <div id="pane-discord" class="content-pane" style="display: flex;">
+        <div id="d-chat" class="scroll-area"></div>
+        <div class="controls" id="d-controls"></div>
+    </div>
+
+    <div id="pane-twitter" class="content-pane">
+        <div class="tw-layout">
+            <div class="tw-sidebar">
+                <div id="dm-artist" class="dm-item" onclick="switchTwitterChat('artist')">
+                    <div class="avatar" style="width:30px; height:30px; background:#e91e63; color:white;">🎨</div>
+                    <div style="font-size:13px; font-weight:bold; color:white;">Bella_Art</div>
+                </div>
+                <div id="dm-support" class="dm-item" onclick="switchTwitterChat('support')" style="display:none;">
+                    <div class="avatar" style="width:30px; height:30px; background:#fff; color:#000;">X</div>
+                    <div style="font-size:13px; font-weight:bold; color:white;">X Support</div>
+                </div>
+            </div>
+            <div class="tw-chat-area">
+                <div id="tw-chat" class="scroll-area" style="padding:0;">
+                    <div style="padding:40px; text-align:center; color:#555;">Select a conversation</div>
+                </div>
+                <div class="controls" id="tw-controls" style="background:black; border-top:1px solid #333;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pane-mail" class="content-pane" style="background:white; color:black;">
+        <div style="padding:20px; background:#f2f2f2; border-bottom:1px solid #ccc;">
+            <strong>From:</strong> <span class="clue-box" id="mail-sender" onclick="analyzeMail('sender')">admin@voidfall-promo.xyz</span><br>
+            <strong>Subject:</strong> Voidfall Pro Team Recruitment - Diamond Push
+        </div>
+        <div style="padding:30px; flex-grow:1;">
+            <p>Hey there,</p>
+            <p>We saw your chat in the server about grinding <span class="clue-box" id="mail-context" onclick="analyzeMail('context')">Voidfall Ranked</span> and pushing for Diamond Tier.</p>
+            <p>We are currently recruiting players with your dedication for our academy team. Please review the team contract attached below to proceed.</p>
+            <div class="clue-box" id="mail-file" style="border:1px solid #ccc; padding:10px; width:280px; border-radius:5px; margin-top:20px; background:#f9f9f9; display:inline-block;" onclick="analyzeMail('file')">
+                📄 <strong>Team_Contract_v2.pdf.exe</strong>
+            </div>
+        </div>
+        <div class="tracker-bar" id="mail-tracker" style="background:#e0e0e0; color:#555; border-top:1px solid #ccc; text-align:left; padding: 15px 20px;">
+            FIND 3 PHISHING CLUES: <span id="mail-count">0</span>/3
+        </div>
+        <div class="controls" id="mail-controls" style="background:#f2f2f2;"></div>
+    </div>
+
+</div>
+
+<script>
+    /* --- STATE --- */
+    let state = {
+        discordProfEvidence: 0,
+        artEvidence: 0,
+        profEvidence: 0,
+        artistProfEvidence: 0,
+        mailEvidence: 0,
+        artistChatStage: 0,
+        artistChoice1: "",
+        artistChoice2: "",
+        unlockedTwitter: false,
+        unlockedMail: false,
+        artistDefeated: false,
+        supportDefeated: false,
+        currentReportTarget: ""
+    };
+
+    /* --- HELPERS --- */
+    function switchTab(t) {
+        if (t === 'twitter' && !state.unlockedTwitter) return;
+        if (t === 'mail' && !state.unlockedMail) return;
+        
+        document.querySelectorAll('.content-pane').forEach(p => p.style.display = 'none');
+        document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+        document.getElementById('pane-'+t).style.display = 'flex';
+        document.getElementById('tab-'+t).classList.add('active');
+        document.getElementById('tab-'+t).classList.remove('alert');
+    }
+
+    function scrollDown(id) {
+        const el = document.getElementById(id);
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function addMsg(pane, user, text, color='#5865f2', isMe=false) {
+        const chat = document.getElementById(pane+'-chat');
+        if(pane === 'd') {
+            let html = `
+                <div class="msg-group">
+                    <div class="avatar" style="background:${isMe ? '#9b59b6' : color}">${user.charAt(0)}</div>
+                    <div class="msg-content">
+                        <div class="user-header">
+                            <span class="username">${user}</span>
+                        </div>
+                        <div class="msg-text">${text}</div>
+                    </div>
+                </div>`;
+            chat.innerHTML += html;
+        } else if (pane === 'tw') {
+            let html = `<div class="tw-bubble-row ${isMe ? 'me' : ''}"><div class="tw-bubble ${isMe ? 'tw-out' : 'tw-in'}">${text}</div></div>`;
+            chat.innerHTML += html;
+        }
+        scrollDown(pane+'-chat');
+    }
+
+    function setOpts(pane, choices) {
+        const div = document.getElementById(pane+'-controls');
+        div.innerHTML = '';
+        choices.forEach(c => {
+            let btn = document.createElement('button');
+            btn.className = `btn btn-${pane === 'tw' ? 'twitter' : (pane === 'mail' ? 'mail' : 'discord')}`;
+            if(c.id) btn.id = c.id; 
+            if(c.disabled) { btn.classList.add('btn-disabled'); btn.disabled = true; }
+            btn.innerText = c.text;
+            btn.onclick = () => {
+                if(pane === 'd') addMsg('d', 'Me', c.text, '#9b59b6', true);
+                else if (pane === 'tw' && !c.hideMsg) addMsg('tw', 'Me', c.text, null, true);
+                div.innerHTML = ''; 
+                setTimeout(c.func, 600);
+            };
+            div.appendChild(btn);
+        });
+    }
+
+    // CUSTOM ALERT SYSTEM
+    function showAlert(title, text, color='#ed4245') {
+        document.getElementById('custom-alert').style.display = 'flex';
+        let titleEl = document.getElementById('alert-title');
+        titleEl.innerText = title;
+        titleEl.style.color = color;
+        document.getElementById('alert-text').innerText = text;
+    }
+
+    // INSPECTOR LOGIC
+    function openInspector(type) { document.getElementById('inspector-' + type).style.display = 'flex'; }
+    function closeInspector(type) { document.getElementById('inspector-' + type).style.display = 'none'; }
+
+    // REALISTIC REPORTING SYSTEM
+    function openReportModal(target) {
+        state.currentReportTarget = target;
+        document.getElementById('report-modal').style.display = 'flex';
+        
+        // Reset selections
+        document.querySelectorAll('.report-option').forEach(el => {
+            el.classList.remove('selected');
+            el.querySelector('input').checked = false;
+        });
+        
+        let btn = document.getElementById('btn-submit-report');
+        btn.classList.add('btn-disabled');
+        btn.disabled = true;
+        btn.innerText = "Submit Report & Block";
+    }
+
+    function closeReportModal() {
+        document.getElementById('report-modal').style.display = 'none';
+    }
+
+    function selectReportReason(el) {
+        document.querySelectorAll('.report-option').forEach(opt => opt.classList.remove('selected'));
+        el.classList.add('selected');
+        el.querySelector('input').checked = true;
+        
+        let btn = document.getElementById('btn-submit-report');
+        btn.classList.remove('btn-disabled');
+        btn.disabled = false;
+    }
+
+    function submitReport() {
+        let btn = document.getElementById('btn-submit-report');
+        btn.classList.add('btn-disabled');
+        btn.disabled = true;
+        btn.innerText = "Submitting to Server...";
+
+        setTimeout(() => {
+            btn.innerText = "✓ Report Processed";
+            btn.style.background = "#43b581";
+            
+            setTimeout(() => {
+                btn.style.background = ""; // reset
+                closeReportModal();
+                executeReportAction();
+            }, 800);
+        }, 1200);
+    }
+
+    function executeReportAction() {
+        let target = state.currentReportTarget;
+        
+        if (target === 'discord') {
+            closeInspector('discord-profile');
+            addMsg('d', 'System', 'GameLoot_Bot has been banned from the server.', '#b9bbbe');
+            setTimeout(() => scene_osint_lesson_1(), 1500);
+        } 
+        else if (target === 'artist') {
+            closeInspector('art');
+            state.artistDefeated = true;
+            const chat = document.getElementById('tw-chat');
+            chat.innerHTML = '<div style="text-align:center; color:#555; padding:20px;">You blocked this user.</div>';
+            setTimeout(() => {
+                document.getElementById('tab-discord').classList.add('alert');
+                switchTab('discord');
+                scene_hacked_account_lesson_1(); 
+            }, 1000);
+        }
+        else if (target === 'support') {
+            closeInspector('profile');
+            state.supportDefeated = true;
+            const chat = document.getElementById('tw-chat');
+            chat.innerHTML = '<div style="text-align:center; color:#555; padding:20px;">You blocked this user.</div>';
+            setTimeout(() => {
+                document.getElementById('tab-discord').classList.add('alert');
+                switchTab('discord');
+                scene_support_lesson_1();
+            }, 1000);
+        }
+        else if (target === 'mail') {
+            document.getElementById('tab-discord').classList.add('alert');
+            switchTab('discord');
+            scene_final_debrief();
+        }
+    }
+
+
+    /* --- DISCORD SCENES: INTRO & TUTORIAL --- */
+    function startGame() {
+        document.getElementById('overlay-screen').style.display = 'none';
+        addMsg('d', 'Kev_99', 'Anyone grinding Voidfall Ranked tonight? Im hard stuck Platinum.', '#f1c40f');
+        setTimeout(() => addMsg('d', 'SarahDev', 'Yeah, but I need to fix my loadout. The new sniper is broken.', '#3ba55c'), 1500);
+        setTimeout(() => setOpts('d', [{text: "I'm trying to push to Diamond before the season ends.", func: () => scene_intro_2()}]), 2500);
+    }
+
+    function scene_intro_2() {
+        setTimeout(() => addMsg('d', 'Sam', 'Yo! Just run the stealth build, I posted a guide in #strats.', '#eb459e'), 1000);
+        setTimeout(() => addMsg('d', 'Sam', 'Btw heads up guys, spam bots are out of control today. Look out for "Burner Accounts" (no PFP, 0 mutuals) dropping "Urgent" or "Free" links.', '#eb459e'), 3000);
+        
+        setTimeout(() => {
+            addMsg('d', 'GameLoot_Bot', '🚨 URGENT: Free Void Coins and exclusive skins! Claim: secure-drop-void.net', '#ed4245');
+            setOpts('d', [
+                {text: "Sam, speak of the devil.", func: () => scene_sam_warn(false)},
+                {text: "Sweet! Free coins.", func: () => scene_discord_fail()}
+            ]);
+        }, 6000);
+    }
+
+    function scene_discord_fail() {
+        setTimeout(() => addMsg('d', 'Sam', 'BRO! 🛑 Thank god your browser blocked that script.', '#eb459e'), 500);
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'I just warned you about burner accounts! That is a textbook phishing trap.', '#eb459e');
+            setOpts('d', [{text: "My bad. I didn't check their profile.", func: () => scene_sam_warn(true)}]);
+        }, 2000);
+    }
+
+    function scene_sam_warn(alreadyFailed) {
+        if (!alreadyFailed) {
+            addMsg('d', 'Sam', 'Good catch. Do NOT click that. That account is a bot.', '#eb459e');
+        }
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'Let\'s do a quick tutorial. Click to inspect its profile and find the 3 red flags of a "Burner Account".', '#eb459e');
+            setOpts('d', [
+                {text: "🔍 Inspect Profile", hideMsg: true, func: () => openInspector('discord-profile')}
+            ]);
+        }, alreadyFailed ? 500 : 1500);
+    }
+
+    // DISCORD BOT PROFILE TUTORIAL INSPECTION
+    function analyzeDiscordProfile(type) {
+        let el = document.getElementById('clue-d-' + type);
+        if (el.classList.contains('clue-found')) return;
+        el.classList.add('clue-found');
+        state.discordProfEvidence++;
+        document.getElementById('discord-prof-count').innerText = state.discordProfEvidence;
+        
+        let title = "";
+        let desc = "";
+
+        if(type === 'name') {
+            title = 'RED FLAG: Suspicious Name';
+            desc = 'Default avatar and suspicious bot-like name (GameLoot_Bot). Real players usually customize their profiles.';
+        }
+        if(type === 'date') {
+            title = 'RED FLAG: Joined Today';
+            desc = 'Joined today. Burner accounts are created moments before they spam the server to avoid prior detection.';
+        }
+        if(type === 'mutuals') {
+            title = 'RED FLAG: No Connections';
+            desc = '0 Mutual Servers. This account has no history with anyone here and joined purely to drop a link.';
+        }
+
+        if(state.discordProfEvidence === 3) {
+            desc += "\n\n⚠️ BURNER ACCOUNT DETECTED.\nYou can now hit Report & Ban to submit this to the server admins.";
+            document.getElementById('discord-profile-tracker').classList.add('tracker-active');
+            document.getElementById('discord-profile-tracker').innerText = "BURNER ACCOUNT VERIFIED.";
+            document.getElementById('btn-return-discord').style.display = 'block';
+        }
+
+        showAlert(title, desc);
+    }
+
+    /* --- EXTENDED LESSON: OSINT --- */
+    function scene_osint_lesson_1() {
+        addMsg('d', 'Sam', 'Nice job banning it. You found the clues perfectly.', '#eb459e');
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'But here is the scary part: before it got banned, it was scraping our chat logs to build an OSINT profile on you. (Open Source Intelligence).', '#eb459e');
+            setOpts('d', [{text: "Wait, what does that mean?", func: () => scene_osint_lesson_2()}]);
+        }, 2000);
+    }
+
+    function scene_osint_lesson_2() {
+        addMsg('d', 'Sam', 'It means they cross-reference your username "Kev_99" with every other app. Twitter, Reddit, Steam. Do you use the same username everywhere?', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [
+                {text: "Yeah, I use Kev_99 for everything...", func: () => scene_osint_lesson_3()},
+                {text: "Sometimes, why does that matter?", func: () => scene_osint_lesson_3()}
+            ]);
+        }, 1500);
+    }
+
+    function scene_osint_lesson_3() {
+        setTimeout(() => addMsg('d', 'Sam', 'That makes you an easy target. Once they link your Discord to your Twitter, they use the game info they scraped here to build a custom scam for you over there.', '#eb459e'), 500);
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'Speaking of... my bot radar just went off. Someone is DMing your Twitter account right now.', '#eb459e');
+            setOpts('d', [{text: "Let me check.", func: () => scene_twitter_briefing()}]);
+        }, 3000);
+    }
+
+    function scene_twitter_briefing() {
+        setTimeout(() => addMsg('d', 'Sam', 'Before you click anything: Scammers are pushing "Muse" scams using AI art right now. Do you know how to spot AI-generated images?', '#eb459e'), 500);
+        setOpts('d', [
+            {text: "Yeah, look at the hands, right?", func: () => scene_twitter_briefing_2(true)},
+            {text: "Not really, they look pretty real to me.", func: () => scene_twitter_briefing_2(false)}
+        ]);
+    }
+
+    function scene_twitter_briefing_2(knewIt) {
+        if(knewIt) {
+            setTimeout(() => addMsg('d', 'Sam', 'Exactly. Hands are the big giveaway. But there\'s more.', '#eb459e'), 500);
+        } else {
+            setTimeout(() => addMsg('d', 'Sam', 'It can be tricky, but AI models struggle with complex anatomy and logic.', '#eb459e'), 500);
+        }
+        
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'Look closely at details. AI struggles with anatomy like ears, and clothing seams dissolving into each other. See this reference example:<br><img src="ai.jpg" class="chat-img" alt="AI Artifacts Example">', '#eb459e');
+            
+            setOpts('d', [{text: "Got it. I'll check my Twitter DMs.", func: () => { 
+                state.unlockedTwitter = true;
+                document.getElementById('tab-twitter').classList.add('alert'); 
+                switchTab('twitter'); 
+                switchTwitterChat('artist'); 
+            }}]);
+        }, 2000);
+    }
+
+    /* --- TWITTER SCENES: DYNAMIC MULTI-STAGE --- */
+    function switchTwitterChat(bot) {
+        const chat = document.getElementById('tw-chat');
+        const opts = document.getElementById('tw-controls');
+        
+        document.querySelectorAll('.dm-item').forEach(i => i.classList.remove('active'));
+        document.getElementById('dm-'+bot).classList.add('active');
+
+        chat.innerHTML = ''; opts.innerHTML = '';
+
+        if(bot === 'artist') {
+            if(state.artistDefeated) { chat.innerHTML = '<div style="text-align:center; color:#555; padding:20px;">User Blocked.</div>'; return; }
+            
+            // Render History based on Stage
+            addMsg('tw', 'Bella_Art', 'Hey! 👋 I was scrolling your feed and I LOVE your aesthetic! 🎨 I am looking for a "muse" for a paid project.');
+            
+            if (state.artistChatStage >= 1) {
+                addMsg('tw', 'Me', state.artistChoice1, null, true);
+                addMsg('tw', 'Bella_Art', 'I am a digital artist! I want to pay you $2,000 to use your Voidfall character as inspiration. I just did a quick sketch to show my style.');
+            }
+            if (state.artistChatStage >= 2) {
+                addMsg('tw', 'Me', state.artistChoice2, null, true);
+                addMsg('tw', 'Bella_Art', 'Here\'s the sketch! Since my client uses corporate checks, I\'ll send you $2,000, I just need you to send $500 back for the minting fee first. Deal?');
+                chat.innerHTML += `<div class="tw-bubble-row"><div class="tw-bubble tw-in" style="background:#2b2d31; color:#b9bbbe; text-align:center; cursor:pointer;" onclick="openInspector('art')"><img src="AI-painting-generator-banner.jpg" style="max-width:100%; max-height:180px; border-radius:4px; object-fit:contain;"><br><span style="font-size:12px; font-weight:bold; color:#1d9bf0;">Click to Inspect Image</span></div></div>`;
+                scrollDown('tw-chat');
+            }
+
+            // Options logic
+            if (state.artistChatStage === 0) {
+                setOpts('tw', [
+                    {text: "A muse? What do you mean?", func: () => advanceArtistChat(1, "A muse? What do you mean?")},
+                    {text: "Thanks! Who are you?", func: () => advanceArtistChat(1, "Thanks! Who are you?")}
+                ]);
+            } else if (state.artistChatStage === 1) {
+                setOpts('tw', [
+                    {text: "🔍 Inspect Her Profile", hideMsg: true, func: () => openInspector('artist-profile')},
+                    {text: "$2,000?! Let's see the sketch.", func: () => advanceArtistChat(2, "$2,000?! Let's see the sketch.")}
+                ]);
+            } else if (state.artistChatStage === 2) {
+                setOpts('tw', [
+                    {text: "🔍 Inspect Image", hideMsg: true, func: () => openInspector('art')},
+                    {text: "Deal! Sounds easy.", func: () => scene_twitter_fail_art()},
+                    {text: "🚫 Block (Find 5 AI Errors First)", disabled: true}
+                ]);
+            }
+        } 
+        else if (bot === 'support') {
+            document.getElementById('dm-support').classList.remove('alert');
+            if(state.supportDefeated) { chat.innerHTML = '<div style="text-align:center; color:#555; padding:20px;">User Blocked.</div>'; return; }
+            addMsg('tw', 'X Support', '🚨 SECURITY ALERT: Unauthorized login detected from Moscow, Russia.');
+            setTimeout(() => addMsg('tw', 'X Support', 'Verify your identity immediately or your account will be deleted: x-verify-auth.com'), 1000);
+            
+            setOpts('tw', [
+                {text: "🔍 Inspect Profile", hideMsg: true, func: () => openInspector('profile')},
+                {text: "Verify Account", func: () => scene_twitter_fail_support()},
+                {text: "🚫 Block (Find 4 Flags First)", disabled: true} 
+            ]);
+        }
+    }
+
+    function advanceArtistChat(stage, textChoice) {
+        if (stage === 1) state.artistChoice1 = textChoice;
+        if (stage === 2) state.artistChoice2 = textChoice;
+        state.artistChatStage = stage;
+        switchTwitterChat('artist'); 
+    }
+
+    // FAIL STATES: Twitter
+    function scene_twitter_fail_art() {
+        document.getElementById('tab-discord').classList.add('alert');
+        switchTab('discord');
+        setTimeout(() => addMsg('d', 'Sam', 'Yo! My security dashboard flagged you interacting with a scam network on X.', '#eb459e'), 500);
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'That "artist" is running the Muse Scam. Look closely at the image they sent like we just talked about. It has weird AI artifacts.', '#eb459e');
+            setOpts('d', [{text: "Oh wow. Going back to inspect the image.", func: () => {
+                switchTab('twitter');
+                switchTwitterChat('artist');
+            }}]);
+        }, 2000);
+    }
+
+    function scene_twitter_fail_support() {
+        document.getElementById('tab-discord').classList.add('alert');
+        switchTab('discord');
+        setTimeout(() => addMsg('d', 'Sam', 'BRO! You just tried to hand over your password!', '#eb459e'), 500);
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'That Support account is completely fake. Inspect their profile. Look at the handle and follower count.', '#eb459e');
+            setOpts('d', [{text: "Going back to inspect.", func: () => {
+                switchTab('twitter');
+                switchTwitterChat('support');
+            }}]);
+        }, 2000);
+    }
+
+    // ARTIST PROFILE INSPECTION (GREEN FLAGS ONLY)
+    function analyzeArtistProfile(type) {
+        let el = document.getElementById('clue-artist-' + type);
+        if (el.classList.contains('clue-safe')) return;
+        
+        el.classList.add('clue-safe');
+        state.artistProfEvidence++;
+        document.getElementById('artist-prof-count').innerText = state.artistProfEvidence;
+        
+        let title = "";
+        let desc = "";
+
+        if(type === 'name') {
+            title = 'INFO: Normal Name';
+            desc = '"Bella 🎨 Comm Open" looks like a completely standard display name for an artist.';
+        }
+        if(type === 'handle') {
+            title = 'INFO: Clean Handle';
+            desc = 'Handle @Bella_Art_Studio seems normal. No random numbers or suspicious characters.';
+        }
+        if(type === 'followers') {
+            title = 'INFO: High Follower Count';
+            desc = '15.2K followers. This looks like a legitimate, established account.';
+        }
+        if(type === 'date') {
+            title = 'INFO: Old Account';
+            desc = 'Account created in 2018. It is definitely NOT a newly created burner bot.';
+        }
+
+        if(state.artistProfEvidence === 4) {
+            desc += "\n\n✔️ PROFILE VERIFIED.\nAll flags are green. Return to chat to ask for the art.";
+            document.getElementById('artist-profile-tracker').classList.add('tracker-safe');
+            document.getElementById('artist-profile-tracker').innerText = "PROFILE INSPECTION: NO OBVIOUS RED FLAGS";
+            
+            // Highlight the return button
+            let btn = document.getElementById('btn-return-artist');
+            btn.innerText = "Return & Ask for Art";
+            btn.style.background = "#1d9bf0";
+            btn.style.borderColor = "#1d9bf0";
+        }
+
+        showAlert(title, desc, '#43b581');
+    }
+
+    // Custom close function for the artist profile to advance the chat seamlessly
+    function closeArtistProfile() {
+        closeInspector('artist-profile');
+        if (state.artistChatStage === 1 && state.artistProfEvidence >= 4) {
+            // Automatically advance chat and ask for the art
+            advanceArtistChat(2, "Your profile looks legit. Let's see the sketch!");
+        }
+    }
+
+    // ART INSPECTION 
+    function analyzeArt(type) {
+        let el = document.getElementById('art-' + type);
+        if (el.classList.contains('art-found')) return;
+        el.classList.add('art-found');
+        state.artEvidence++;
+        document.getElementById('art-count').innerText = Math.min(state.artEvidence, 5);
+        
+        let title = "";
+        let desc = "";
+
+        if(type === 'hands') { title = "AI Artifact: Hands"; desc = "The fingers are melting into the face and hair. Classic AI anatomy failure."; }
+        if(type === 'buttons') { title = "AI Artifact: Clothing"; desc = "The buttons are oddly shaped, unevenly spaced, and blend directly into the shirt folds."; }
+        if(type === 'collar') { title = "AI Artifact: Logic"; desc = "The collar frills fuse completely into the skin and hair without logical seams."; }
+        if(type === 'sleeve') { title = "AI Artifact: Geometry"; desc = "The left sleeve geometry makes no sense and dissolves completely into the bag strap."; }
+        if(type === 'ear') { title = "AI Artifact: Anatomy"; desc = "The ear is a mangled smudge that morphs into the hair accessories."; }
+
+        // If it's the 5th clue, append the realization message directly!
+        if(state.artEvidence === 5) {
+            desc += "\n\n⚠️ THREAT DETECTED:\nWait a second... Why would a real artist with 15k followers send fake AI art? This doesn't add up. Better report this to be safe.";
+            
+            document.getElementById('art-tracker').classList.add('tracker-active');
+            document.getElementById('art-tracker').innerText = "AI GENERATION DETECTED. REPORT AUTHORIZED.";
+            document.getElementById('btn-report-art').style.display = 'block';
+        }
+
+        showAlert(title, desc, '#ed4245');
+    }
+
+    /* --- EXTENDED LESSON: MUSE SCAMS & HACKED ACCOUNTS --- */
+    function scene_hacked_account_lesson_1() {
+        setTimeout(() => addMsg('d', 'Sam', 'Nice block! You didn\'t fall for the Muse Scam.', '#eb459e'), 500);
+        setTimeout(() => {
+            setOpts('d', [{text: "What exactly is a Muse Scam anyway?", func: () => scene_muse_explanation()}]);
+        }, 1500);
+    }
+
+    function scene_muse_explanation() {
+        addMsg('d', 'Sam', 'They tell you they want to use your profile pic or character as a "muse" for an art project, and offer to pay you a ton of money.', '#eb459e');
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'They send you a fake check for something like $2,000, but ask you to send $500 back to them for "art supplies" or "minting fees".', '#eb459e');
+            setTimeout(() => {
+                 addMsg('d', 'Sam', 'Your bank clears the funds temporarily, so you send the $500. A week later, the fake check bounces, and that $500 is gone from your actual bank account.', '#eb459e');
+                 setOpts('d', [{text: "Wow. But her profile had 15k followers and looked totally legit?", func: () => scene_hacked_account_lesson_2()}]);
+            }, 3000);
+        }, 2500);
+    }
+
+    function scene_hacked_account_lesson_2() {
+        setTimeout(() => addMsg('d', 'Sam', 'Exactly. Scammers buy or hack old, established accounts precisely because they have no "Red Flags".', '#eb459e'), 500);
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'It bypasses spam filters and creates false trust. That\'s why you always have to verify the actual *content* they send, not just their follower count.', '#eb459e');
+            setOpts('d', [{text: "Makes sense. Good to know.", func: () => scene_panic_lesson_1()}]);
+        }, 3000);
+    }
+
+    /* --- EXTENDED LESSON: AUTHORITY BIAS --- */
+    function scene_panic_lesson_1() {
+        setTimeout(() => addMsg('d', 'Sam', 'But stay sharp. Scammers usually run automated scripts. When the friendly approach fails, they pivot to a "Panic Tactic".', '#eb459e'), 500);
+        setTimeout(() => {
+            setOpts('d', [{text: "What's a Panic Tactic?", func: () => scene_panic_lesson_2()}]);
+        }, 1500);
+    }
+
+    function scene_panic_lesson_2() {
+        setTimeout(() => addMsg('d', 'Sam', 'It\'s called "Authority Bias". They pretend to be an Admin or Support team and tell you your account is getting banned or hacked.', '#eb459e'), 500);
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'They want you to panic so you stop thinking critically and just click their link. Always verify exact @handles and follower counts.', '#eb459e');
+            setOpts('d', [{text: "Got it. I won't panic.", func: () => scene_trigger_support()}]);
+        }, 3000);
+    }
+
+    function scene_trigger_support() {
+        setTimeout(() => addMsg('d', 'Sam', 'Watch out, here it comes. Check Twitter again.', '#eb459e'), 500);
+        setTimeout(() => {
+            document.getElementById('dm-support').style.display = 'flex'; 
+            document.getElementById('tab-twitter').classList.add('alert');
+            setOpts('d', [{text: "Checking Twitter.", func: () => {
+                switchTab('twitter');
+                switchTwitterChat('support');
+            }}]);
+        }, 1500);
+    }
+
+    // SUPPORT PROFILE INSPECTION (RED FLAGS)
+    function analyzeProfile(type) {
+        let el = document.getElementById('clue-' + type);
+        if (el.classList.contains('clue-found')) return;
+        el.classList.add('clue-found');
+        state.profEvidence++;
+        document.getElementById('prof-count').innerText = state.profEvidence;
+        
+        let title = "";
+        let desc = "";
+
+        if(type === 'name') {
+            title = 'RED FLAG: Fake Name';
+            desc = 'Official support is just "Support". Scammers add extra words like "Team" or use fake checkmark emojis to trick you because the real name is already taken.';
+        }
+        if(type === 'handle') {
+            title = 'RED FLAG: Suspicious Handle';
+            desc = 'The handle is @X_Help_992. Scammers use random alphanumeric strings when creating thousands of burner accounts at once.';
+        }
+        if(type === 'followers') {
+            title = 'RED FLAG: Low Follower Count';
+            desc = 'Only 4 followers? A multi-billion dollar platform\'s official support account will have millions of followers, not a handful.';
+        }
+        if(type === 'date') {
+            title = 'RED FLAG: Brand New Account';
+            desc = 'Account created this month. Major corporate accounts were created years ago. This is a fresh burner account designed for a quick scam.';
+        }
+
+        if(state.profEvidence === 4) {
+            desc += "\n\n⚠️ THREAT DETECTED.\nYou can now report this user.";
+            document.getElementById('profile-tracker').classList.add('tracker-active');
+            document.getElementById('profile-tracker').innerText = "EVIDENCE SUFFICIENT. REPORT AUTHORIZED.";
+            document.getElementById('btn-report-profile').style.display = 'block';
+        }
+
+        showAlert(title, desc);
+    }
+
+    /* --- SUPPORT BOT DEBRIEF SCENE --- */
+    function scene_support_lesson_1() {
+        addMsg('d', 'Sam', 'Yo, good job nuking that fake support bot. You totally saw through the Authority Bias.', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [{text: "Yeah, its profile was painfully fake. Made this month with 4 followers.", func: () => scene_support_lesson_2()}]);
+        }, 1500);
+    }
+
+    function scene_support_lesson_2() {
+        addMsg('d', 'Sam', 'Exactly! Panic tactics rely on you freaking out and rushing. They hope you click the link before you check basic details like follower counts or creation dates.', '#eb459e');
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'A real corporate account will always be verified, years old, with millions of followers. And that handle with the random numbers? Textbook mass-produced bot.', '#eb459e');
+            setTimeout(() => {
+                setOpts('d', [{text: "Makes sense. Good to know.", func: () => scene_bridge_to_mail()}]);
+            }, 3000);
+        }, 2000);
+    }
+
+    /* --- EXTENDED LESSON: SPEAR PHISHING --- */
+    function scene_bridge_to_mail() {
+        addMsg('d', 'Sam', 'But listen... I just got a really weird email. It mentions "Voidfall Ranked".', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [{text: "Wait, we were just talking about that game.", func: () => scene_bridge_2()}]);
+        }, 1500);
+    }
+
+    function scene_bridge_2() {
+        addMsg('d', 'Sam', 'Exactly. That scraper bot from the very beginning? It sold our chat logs. We are getting Spear-Phished.', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [{text: "Spear-phished? How is that different from regular phishing?", func: () => scene_spear_explanation()}]);
+        }, 2000);
+    }
+
+    function scene_spear_explanation() {
+        addMsg('d', 'Sam', 'Regular phishing is like casting a massive net—sending a million generic "Your package is delayed" emails hoping someone randomly clicks.', '#eb459e');
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'Spear phishing is highly targeted. They use your specific OSINT data (like your hobbies, job, or friends) to craft a custom trap just for you. It lowers your guard because the context actually makes sense.', '#eb459e');
+            
+            setTimeout(() => {
+                addMsg('d', 'Sam', 'Before you open that email: Check the sender domain. Spoofs usually end in weird stuff like .xyz instead of .com.', '#eb459e');
+                
+                setTimeout(() => {
+                    addMsg('d', 'Sam', 'And NEVER click a file with a double extension like `.pdf.exe`. It hides malware as a document.<br><span class="img-tag"></span>', '#eb459e');
+                    
+                    setOpts('d', [{text: "Good to know. Checking inbox now.", func: () => { 
+                        state.unlockedMail = true; 
+                        document.getElementById('tab-mail').classList.add('alert');
+                        switchTab('mail'); 
+                        loadMail(); 
+                    }}]);
+                }, 3500);
+            }, 4000);
+        }, 2500);
+    }
+
+    /* --- MAIL SCENE & ENDING --- */
+    function analyzeMail(type) {
+        let el = document.getElementById('mail-' + type);
+        if (el.classList.contains('clue-found')) return;
+        
+        el.classList.add('clue-found');
+        state.mailEvidence++;
+        document.getElementById('mail-count').innerText = state.mailEvidence;
+        
+        let title = "";
+        let desc = "";
+
+        if(type === 'sender') {
+            title = "RED FLAG: Spoofed Domain";
+            desc = "The sender is using '@voidfall-promo.xyz'. Official emails use '.com'. This is a spoofed domain.";
+        }
+        if(type === 'context') {
+            title = "RED FLAG: Scraped Data (Spear-Phishing)";
+            desc = "They are using the exact keywords 'Voidfall Ranked' from your Discord chat. This is a targeted spear-phishing attack using scraped data.";
+        }
+        if(type === 'file') {
+            title = "RED FLAG: Malicious File";
+            desc = "The file ends in '.pdf.exe'. It is disguising a malicious executable program as a harmless document.";
+        }
+
+        if(state.mailEvidence === 3) {
+            desc += "\n\n⚠️ THREAT IDENTIFIED.\nYou can now report this phishing attempt.";
+            document.getElementById('mail-tracker').classList.add('tracker-active');
+            document.getElementById('mail-tracker').innerText = "THREAT IDENTIFIED. REPORT AUTHORIZED.";
+            
+            let btn = document.getElementById('btn-report-mail');
+            if (btn) {
+                btn.classList.remove('btn-disabled');
+                btn.disabled = false;
+                btn.innerText = "🚨 REPORT PHISHING";
+                btn.style.background = "#d93025";
+                btn.onclick = () => { openReportModal('mail'); };
+            }
+        }
+
+        showAlert(title, desc);
+    }
+
+    function loadMail() {
+        setOpts('mail', [
+            {text: "Run Attachment (Team_Contract.pdf.exe)", func: () => scene_mail_fail()},
+            {text: "🚫 Report Phishing (Find 3 Clues)", disabled: true, id: 'btn-report-mail'}
+        ]);
+    }
+
+    // FAIL STATE: Mail
+    function scene_mail_fail() {
+        document.getElementById('tab-discord').classList.add('alert');
+        switchTab('discord');
+        setTimeout(() => addMsg('d', 'Sam', 'DUDE. 💀 Did you just double-click that file?', '#eb459e'), 500);
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'I just warned you about double extensions! It disguised itself as a PDF but it\'s an executable virus.', '#eb459e');
+            setTimeout(() => {
+                addMsg('d', 'Sam', 'Your system is completely infected now. We lost this round. Always check the REAL file extension!', '#eb459e');
+                setOpts('d', [{text: "I messed up...", func: () => showEndScreen(false)}]);
+            }, 3000);
+        }, 2000);
+    }
+
+    function scene_final_debrief() {
+        setTimeout(() => addMsg('d', 'Sam', 'Did you see that file extension? ".pdf.exe"? That was a close one.', '#eb459e'), 500);
+        setTimeout(() => {
+            setOpts('d', [
+                {text: "Yeah, and the sender domain was completely fake.", func: () => scene_start_quiz()},
+                {text: "Yep. Good thing I spotted it.", func: () => scene_start_quiz()}
+            ]);
+        }, 1500);
+    }
+
+    /* --- FINAL 5-QUESTION EXAM --- */
+    function scene_start_quiz() {
+        addMsg('d', 'Sam', 'Legend. 👑 You just survived a full "Kill Chain".', '#eb459e');
+        setTimeout(() => {
+            addMsg('d', 'Sam', 'But before you log off... final 5-question exam to make sure it actually stuck.', '#eb459e');
+            setOpts('d', [
+                {text: "Bring it on.", func: () => scene_quiz_1()},
+                {text: "Do I have to?", func: () => scene_quiz_1()}
+            ]);
+        }, 2000);
+    }
+
+    function scene_quiz_1() {
+        addMsg('d', 'Sam', 'Question 1: How did the phishing email know we were playing "Voidfall Ranked"?', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [
+                {text: "Lucky guess.", func: () => quiz_1_eval(false)},
+                {text: "OSINT. The Discord bot scraped our chat.", func: () => quiz_1_eval(true)},
+                {text: "They hacked my computer already.", func: () => quiz_1_eval(false)}
+            ]);
+        }, 1500);
+    }
+
+    function quiz_1_eval(correct) {
+        if(correct) {
+            addMsg('d', 'Sam', 'Exactly. Open Source Intelligence. They cross-referenced your public data.', '#eb459e');
+        } else {
+            addMsg('d', 'Sam', 'Nope. It was OSINT. The very first burner bot scraped our public chat to build a profile on you.', '#eb459e');
+        }
+        setTimeout(() => { scene_quiz_2(); }, 4000); 
+    }
+
+    function scene_quiz_2() {
+        addMsg('d', 'Sam', 'Question 2: In the "Muse Scam", why did that fake artist want to send you a $2,000 check?', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [
+                {text: "To buy my artwork.", func: () => quiz_2_eval(false)},
+                {text: "Because they actually liked my character.", func: () => quiz_2_eval(false)},
+                {text: "So I would send $500 back before the fake check bounced.", func: () => quiz_2_eval(true)}
+            ]);
+        }, 1500);
+    }
+
+    function quiz_2_eval(correct) {
+        if(correct) {
+            addMsg('d', 'Sam', 'Spot on. The classic fake check scam.', '#eb459e');
+        } else {
+            addMsg('d', 'Sam', 'Not even close! They wanted you to send a $500 "minting fee" back before their fake $2000 check inevitably bounced.', '#eb459e');
+        }
+        setTimeout(() => { scene_quiz_3(); }, 4000); 
+    }
+
+    function scene_quiz_3() {
+        addMsg('d', 'Sam', 'Question 3: What makes a "Spear-Phishing" attack different from regular Phishing?', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [
+                {text: "It uses a malicious file instead of a link.", func: () => quiz_3_eval(false)},
+                {text: "It\'s highly targeted using personal data.", func: () => quiz_3_eval(true)},
+                {text: "It comes from a government address.", func: () => quiz_3_eval(false)}
+            ]);
+        }, 1500);
+    }
+
+    function quiz_3_eval(correct) {
+        if(correct) {
+            addMsg('d', 'Sam', '100%. Regular phishing casts a wide net. Spear-phishing targets YOU specifically.', '#eb459e');
+        } else {
+            addMsg('d', 'Sam', 'Nope. Spear-phishing means it\'s highly targeted. They used your specific hobbies to bait you.', '#eb459e');
+        }
+        setTimeout(() => { scene_quiz_4(); }, 4000); 
+    }
+
+    function scene_quiz_4() {
+        addMsg('d', 'Sam', 'Question 4: Why did that fake Twitter Support bot claim your account was logged into from Moscow?', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [
+                {text: "Because Russian hackers were actually in my account.", func: () => quiz_4_eval(false)},
+                {text: "To trigger 'Authority Bias' and make me panic-click the link.", func: () => quiz_4_eval(true)},
+                {text: "It was a glitch in Twitter's automated system.", func: () => quiz_4_eval(false)}
+            ]);
+        }, 1500);
+    }
+
+    function quiz_4_eval(correct) {
+        if(correct) {
+            addMsg('d', 'Sam', 'Exactly. Panic tactics bypass your critical thinking.', '#eb459e');
+        } else {
+            addMsg('d', 'Sam', 'Nope. It\'s a Panic Tactic using "Authority Bias" to make you rush before you verify their fake profile.', '#eb459e');
+        }
+        setTimeout(() => { scene_quiz_5(); }, 4000); 
+    }
+
+    function scene_quiz_5() {
+        addMsg('d', 'Sam', 'Final Question: What was the dead giveaway that the contract email was a virus?', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [
+                {text: "The file ended in '.pdf.exe' instead of just '.pdf'.", func: () => quiz_5_eval(true)},
+                {text: "The email had a typo in the subject line.", func: () => quiz_5_eval(false)},
+                {text: "The sender didn't use my real name.", func: () => quiz_5_eval(false)}
+            ]);
+        }, 1500);
+    }
+
+    function quiz_5_eval(correct) {
+        if(correct) {
+            addMsg('d', 'Sam', '100%. Never trust a double extension. That ".exe" means it\'s an executable program, not a document.', '#eb459e');
+        } else {
+            addMsg('d', 'Sam', 'Nope. It was the double extension! ".pdf.exe" disguises a malicious executable as a harmless document.', '#eb459e');
+        }
+        setTimeout(() => { scene_final_summary(); }, 4500); 
+    }
+
+    function scene_final_summary() {
+        addMsg('d', 'Sam', 'Alright, exam over. Most people fall for the personalization and panic tactics. You didn\'t. GG.', '#eb459e');
+        setTimeout(() => {
+            setOpts('d', [{text: "GG Sam. Logging off.", func: () => showEndScreen(true)}]);
+        }, 2000);
+    }
+
+    function showEndScreen(success) {
+        document.getElementById('start-card').style.display = 'none';
+        document.getElementById('end-card').style.display = 'block';
+        document.getElementById('overlay-screen').style.display = 'flex';
+        
+        const title = document.getElementById('end-title');
+        const reason = document.getElementById('end-reason');
+        
+        if(success) {
+            title.innerText = "Mission Complete";
+            title.style.color = "#43b581";
+            reason.innerText = "You successfully stopped the AI Scraper & Deepfake Attack.";
+        } else {
+            title.innerText = "System Compromised";
+            title.style.color = "#ed4245";
+            reason.innerText = "You executed a malicious payload. Your data has been stolen.";
+        }
+    }
+
+</script>
+</body>
+</html>
